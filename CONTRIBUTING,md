@@ -1,0 +1,24 @@
+# Guía de contribución
+
+## Flujo de trabajo
+
+1. Crea una rama a partir de `main`: `feature/FEH-XXX-descripcion`, `fix/FEH-XXX-...` o `chore/...`.
+2. Haz commits siguiendo **Conventional Commits**:
+   - `feat(FEH-123): agrega endpoint /customers`
+   - `fix(FEH-124): corrige null en provincia`
+   - `chore(FEH-125): actualiza dependencias`
+   - `docs`, `refactor`, `test`, `perf`, `ci`, `build`
+3. Abre un Pull Request contra `main` usando el template.
+4. Espera al menos 1 review aprobatoria.
+5. Los status checks de CI deben pasar.
+6. Merge con squash preferentemente.
+
+## Referencia a Jira
+
+Todos los commits y PRs deben referenciar el ticket de Jira con `FEH-XXX`.
+
+## Estilo de código
+
+- Python: `ruff` + `black` + tests con `pytest`.
+- JavaScript/TypeScript: `eslint` + `prettier` + tests con `jest`/`vitest`.
+- Java: formato estándar del proyecto + `junit`.
