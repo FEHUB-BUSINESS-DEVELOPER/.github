@@ -1,0 +1,44 @@
+# Jira automation — generado a partir del workflow-template de la organización
+# Enlaza GitHub ↔ Jira (proyecto FEH) con la automatización oficial de FEHUB-BUSINESS-DEVELOPER.
+#
+# Requisitos (una sola vez por organización, ya aplicados en FEHUB-BUSINESS-DEVELOPER):
+#   - App "GitHub for Jira" instalada.
+#   - Secrets de organización: JIRA_BASE_URL, JIRA_USER_EMAIL, JIRA_API_TOKEN.
+#
+# Convenciones exigidas por el check:
+#   - Rama: <type>/FEH-<numero>-<descripcion-kebab>   (type: feature|fix|chore|hotfix|refactor|docs|test)
+#   - PR title: contiene FEH-<numero>
+name: Jira
+
+on:
+  pull_request:
+    types: [opened, reopened, edited, ready_for_review, closed, synchronize]
+  release:
+    types: [published]
+
+jobs:
+  key-check:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    uses: FEHUB-BUSINESS-DEVELOPER/.github/.github/workflows/jira-key-check.yml@main
+    with:
+      project_key: FEH
+
+  transition:
+    if: github.event_name == 'pull_request'
+    uses: FEHUB-BUSINESS-DEVELOPER/.github/.github/workflows/jira-transition.yml@main
+    with:
+      project_key: FEH
+    secrets:
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+  release-comment:
+    if: github.event_name == 'release'
+    uses: FEHUB-BUSINESS-DEVELOPER/.github/.github/workflows/jira-release-comment.yml@main
+    with:
+      project_key: FEH
+    secrets:
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
