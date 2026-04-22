@@ -1,0 +1,104 @@
+name: Jira Transition on PR events (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      project_key:
+        description: "Jira project key"
+        required: false
+        type: string
+        default: "FEH"
+      transition_in_progress:
+        description: "Jira transition name when PR is opened (draft)"
+        required: false
+        type: string
+        default: "En curso"
+      transition_in_review:
+        description: "Jira transition name when PR is ready for review"
+        required: false
+        type: string
+        default: "En revisión"
+      transition_qa:
+        description: "Jira transition name when PR is merged"
+        required: false
+        type: string
+        default: "QA"
+    secrets:
+      JIRA_BASE_URL:
+        required: true
+      JIRA_USER_EMAIL:
+        required: true
+      JIRA_API_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  extract-key:
+    name: Extract Jira key from PR
+    runs-on: ubuntu-latest
+    outputs:
+      issue: ${{ steps.find.outputs.issue }}
+    steps:
+      - name: Find issue key in branch or title
+        id: find
+        uses: actions/github-script@v7
+        env:
+          PROJECT_KEY: ${{ inputs.project_key }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const re = new RegExp(`${process.env.PROJECT_KEY}-\\d+`);
+            const fromBranch = (pr.head && pr.head.ref || '').match(re);
+            const fromTitle = (pr.title || '').match(re);
+            const key = (fromBranch && fromBranch[0]) || (fromTitle && fromTitle[0]) || '';
+            core.setOutput('issue', key);
+            if (!key) core.warning('No Jira key found on PR; skipping transition.');
+
+  transition:
+    name: Transition Jira issue
+    needs: extract-key
+    if: needs.extract-key.outputs.issue != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Jira
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+      - name: Transition to "In Progress" (PR opened as draft)
+        if: github.event.action == 'opened' && github.event.pull_request.draft == true
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue: ${{ needs.extract-key.outputs.issue }}
+          transition: ${{ inputs.transition_in_progress }}
+
+      - name: Transition to "In Review" (PR ready for review or reopened non-draft)
+        if: >-
+          (github.event.action == 'ready_for_review') ||
+          (github.event.action == 'opened' && github.event.pull_request.draft == false) ||
+          (github.event.action == 'reopened' && github.event.pull_request.draft == false)
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue: ${{ needs.extract-key.outputs.issue }}
+          transition: ${{ inputs.transition_in_review }}
+
+      - name: Transition to "QA" (PR merged)
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue: ${{ needs.extract-key.outputs.issue }}
+          transition: ${{ inputs.transition_qa }}
+
+      - name: Comment on Jira with PR info
+        if: always() && needs.extract-key.outputs.issue != ''
+        uses: atlassian/gajira-comment@v3
+        with:
+          issue: ${{ needs.extract-key.outputs.issue }}
+          comment: |
+            GitHub PR **#${{ github.event.pull_request.number }}** — *${{ github.event.action }}*
+            ${{ github.event.pull_request.html_url }}
