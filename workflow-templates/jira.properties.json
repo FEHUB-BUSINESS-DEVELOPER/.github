@@ -1,0 +1,7 @@
+{
+  "name": "Jira automation (FEH)",
+  "description": "Enlaza GitHub ↔ Jira (proyecto FEH): valida la key en rama/PR, transiciona tickets en el tablero y comenta releases.",
+  "iconName": "jira",
+  "categories": ["Automation", "Project management", "Continuous integration"],
+  "filePatterns": [".*"]
+}
