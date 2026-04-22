@@ -1,0 +1,98 @@
+name: Jira Key Check (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      project_key:
+        description: "Jira project key (e.g. FEH)"
+        required: false
+        type: string
+        default: "FEH"
+      enforce_commits:
+        description: "Also require every commit in the PR to contain the Jira key"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    name: Validate Jira key in branch, PR title and commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate branch name
+        env:
+          PROJECT_KEY: ${{ inputs.project_key }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -e
+          BRANCH="$HEAD_REF"
+          echo "Branch: $BRANCH"
+          PATTERN="^(feature|fix|chore|hotfix|refactor|docs|test)/${PROJECT_KEY}-[0-9]+-.+"
+          if [[ ! "$BRANCH" =~ $PATTERN ]]; then
+            echo "::error::Branch '$BRANCH' does not follow convention '<type>/${PROJECT_KEY}-<number>-<description>'"
+            exit 1
+          fi
+          echo "Branch name OK"
+
+      - name: Validate PR title
+        env:
+          PROJECT_KEY: ${{ inputs.project_key }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -e
+          echo "PR title: $PR_TITLE"
+          if [[ ! "$PR_TITLE" =~ ${PROJECT_KEY}-[0-9]+ ]]; then
+            echo "::error::PR title must contain a Jira key like ${PROJECT_KEY}-123"
+            exit 1
+          fi
+          echo "PR title OK"
+
+      - name: Validate commits (optional)
+        if: ${{ inputs.enforce_commits == true }}
+        env:
+          PROJECT_KEY: ${{ inputs.project_key }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -e
+          MISSING=0
+          while read -r sha subject; do
+            if [[ ! "$subject" =~ ${PROJECT_KEY}-[0-9]+ ]]; then
+              echo "::error::Commit $sha is missing Jira key: $subject"
+              MISSING=1
+            fi
+          done < <(git log --pretty=format:'%H %s' "$BASE_SHA".."$HEAD_SHA")
+          if [[ "$MISSING" -eq 1 ]]; then
+            exit 1
+          fi
+          echo "All commits OK"
+
+      - name: Comment Jira link on PR
+        if: success()
+        uses: actions/github-script@v7
+        env:
+          PROJECT_KEY: ${{ inputs.project_key }}
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+        with:
+          script: |
+            const title = context.payload.pull_request.title || '';
+            const key = (title.match(new RegExp(`${process.env.PROJECT_KEY}-\\d+`)) || [])[0];
+            if (!key) return;
+            const base = process.env.JIRA_BASE_URL || 'https://feduro.atlassian.net';
+            const body = `🔗 Jira: [${key}](${base}/browse/${key})`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const already = comments.data.find(c => c.body && c.body.includes(`/browse/${key}`));
+            if (!already) {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

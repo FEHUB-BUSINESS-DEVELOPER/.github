@@ -1,0 +1,85 @@
+name: Jira comment on Release (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      project_key:
+        description: "Jira project key"
+        required: false
+        type: string
+        default: "FEH"
+    secrets:
+      JIRA_BASE_URL:
+        required: true
+      JIRA_USER_EMAIL:
+        required: true
+      JIRA_API_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    name: Collect Jira keys from release commits
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.keys.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve previous tag
+        id: prev
+        env:
+          CURRENT: ${{ github.event.release.tag_name || github.ref_name }}
+        run: |
+          set -e
+          PREV=$(git tag --sort=-creatordate | grep -A1 "^$CURRENT$" | tail -n1 || true)
+          if [ -z "$PREV" ] || [ "$PREV" = "$CURRENT" ]; then
+            PREV=$(git rev-list --max-parents=0 HEAD | tail -n1)
+          fi
+          echo "prev=$PREV" >> "$GITHUB_OUTPUT"
+
+      - name: Extract keys and build matrix
+        id: keys
+        env:
+          PROJECT_KEY: ${{ inputs.project_key }}
+          PREV: ${{ steps.prev.outputs.prev }}
+          CURRENT: ${{ github.event.release.tag_name || github.ref_name }}
+        run: |
+          set -e
+          mapfile -t KEYS < <(git log "$PREV".."$CURRENT" --pretty=format:'%s %b' | grep -oE "${PROJECT_KEY}-[0-9]+" | sort -u)
+          if [ ${#KEYS[@]} -eq 0 ]; then
+            echo "matrix=[]" >> "$GITHUB_OUTPUT"
+          else
+            JSON=$(printf '%s\n' "${KEYS[@]}" | jq -R . | jq -s -c .)
+            echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+          fi
+
+  comment:
+    name: Comment on ${{ matrix.issue }}
+    needs: collect
+    if: needs.collect.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        issue: ${{ fromJSON(needs.collect.outputs.matrix) }}
+    steps:
+      - name: Login to Jira
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+      - name: Comment release link
+        uses: atlassian/gajira-comment@v3
+        with:
+          issue: ${{ matrix.issue }}
+          comment: |
+            🚀 Released in **${{ github.event.release.tag_name || github.ref_name }}** of `${{ github.repository }}`.
+            ${{ github.event.release.html_url }}
