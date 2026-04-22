@@ -1,0 +1,28 @@
+name: Reusable Release Please
+
+on:
+  workflow_call:
+    inputs:
+      release-type:
+        required: true
+        type: string
+        description: "python | node | java | simple"
+      package-name:
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Run release-please
+        uses: googleapis/release-please-action@v4
+        with:
+          release-type: ${{ inputs.release-type }}
+          package-name: ${{ inputs.package-name }}
