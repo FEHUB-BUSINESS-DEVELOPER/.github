@@ -1,0 +1,7 @@
+# Code owners por defecto para todos los repos de la org
+# Cada PR asignará automáticamente revisión a los usuarios listados
+
+* @carlosrodriguez-ui @martingom4
+
+# Workflows críticos requieren revisión de Owners
+/.github/workflows/ @carlosrodriguez-ui
