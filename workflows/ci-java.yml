@@ -1,0 +1,40 @@
+name: Reusable CI - Java
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        required: false
+        type: string
+        default: "21"
+      distribution:
+        required: false
+        type: string
+        default: "temurin"
+      build-tool:
+        required: false
+        type: string
+        default: "maven"
+
+jobs:
+  build-and-test:
+    name: Build & Test (Java)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.distribution }}
+          cache: ${{ inputs.build-tool }}
+
+      - name: Build & Test (Maven)
+        if: inputs.build-tool == 'maven'
+        run: mvn -B verify
+
+      - name: Build & Test (Gradle)
+        if: inputs.build-tool == 'gradle'
+        run: ./gradlew build test
