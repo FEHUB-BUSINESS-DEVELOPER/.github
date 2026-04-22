@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📋 Tablero de Jira FEH
+    url: https://feduro.atlassian.net/jira/software/c/projects/FEH/boards/34
+    about: Consulta el backlog y estado de tareas en Jira.
+ 
