@@ -1,0 +1,40 @@
+name: Reusable CI - Java (Maven)
+
+# Reusable workflow para repos Java + Maven.
+# Uso desde otro repo:
+#   jobs:
+#     ci:
+#       uses: FEHUB-BUSINESS-DEVELOPER/.github/.github/workflows/_ci-java.yml@main
+#       with:
+#         java-version: "21"
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: "Versión de Java"
+        type: string
+        default: "21"
+      java-distribution:
+        description: "Distribución de JDK"
+        type: string
+        default: "temurin"
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java ${{ inputs.java-version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+          cache: maven
+
+      - name: Build & Test (mvn verify)
+        run: mvn -B verify
