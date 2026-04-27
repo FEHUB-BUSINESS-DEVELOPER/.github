@@ -1,0 +1,8 @@
+# CODEOWNERS — reviewers default para PRs en este repo.
+# Sintaxis: <patrón> <usuario1> <usuario2>
+# Más info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-security/customizing-your-repository/about-code-owners
+#
+# Org: FEHUB-BUSINESS-DEVELOPER
+# Default reviewer: martingom4
+
+* @martingom4
