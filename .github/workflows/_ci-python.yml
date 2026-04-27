@@ -58,7 +58,14 @@ jobs:
         shell: bash
         run: |
           if find . -path ./.venv -prune -o \( -name "test_*.py" -o -name "*_test.py" \) -print | grep -q .; then
+            set +e
             pytest -v
+            rc=$?
+            if [ $rc -eq 5 ]; then
+              echo "::notice::pytest no recolectó tests (exit 5) — tratado como OK"
+              exit 0
+            fi
+            exit $rc
           else
             echo "::notice::No se encontraron tests — omitido"
           fi
