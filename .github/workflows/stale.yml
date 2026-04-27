@@ -1,0 +1,32 @@
+name: Cerrar issues y PRs sin actividad
+
+on:
+  schedule:
+    - cron: "0 6 * * *"  # diario 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-stale: 30
+          days-before-close: 60
+          stale-issue-label: "stale"
+          stale-pr-label: "stale"
+          exempt-issue-labels: "pinned,security,blocked"
+          exempt-pr-labels: "pinned,security,blocked,dependencies"
+          stale-issue-message: |
+            Este issue no tuvo actividad por 30 días. Marcado como `stale`.
+            Si sigue siendo relevante, comentá o sacá el label. Se cerrará automáticamente en 60 días si no hay actividad.
+          stale-pr-message: |
+            Este PR no tuvo actividad por 30 días. Marcado como `stale`.
+            Si seguís trabajando en él, hacé un push o comentá. Se cerrará automáticamente en 60 días si no hay actividad.
+          close-issue-message: "Cerrado por inactividad. Reabrí si vuelve a ser relevante."
+          close-pr-message: "Cerrado por inactividad. Reabrí si querés retomarlo."
+          operations-per-run: 100
