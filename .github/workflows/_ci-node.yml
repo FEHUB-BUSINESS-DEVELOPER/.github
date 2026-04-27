@@ -1,0 +1,104 @@
+name: Reusable CI - Node
+
+# Reusable workflow para repos Node (npm/yarn/pnpm autodetect).
+# Corre install + lint + test + build SI cada uno está definido en package.json.
+# Si un script no existe, no falla — solo lo omite.
+#
+# Uso:
+#   jobs:
+#     ci:
+#       uses: FEHUB-BUSINESS-DEVELOPER/.github/.github/workflows/_ci-node.yml@main
+#       with:
+#         node-version: "20"
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: "Versión de Node"
+        type: string
+        default: "20"
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect package manager
+        id: pm
+        shell: bash
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            echo "pm=pnpm" >> "$GITHUB_OUTPUT"
+          elif [ -f yarn.lock ]; then
+            echo "pm=yarn" >> "$GITHUB_OUTPUT"
+          else
+            echo "pm=npm" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup pnpm
+        if: steps.pm.outputs.pm == 'pnpm'
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node ${{ inputs.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ steps.pm.outputs.pm }}
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          case "${{ steps.pm.outputs.pm }}" in
+            pnpm) pnpm install --frozen-lockfile ;;
+            yarn) yarn install --frozen-lockfile ;;
+            npm)  npm ci ;;
+          esac
+
+      - name: Lint (si está definido en package.json)
+        shell: bash
+        run: |
+          has_script() { node -e "process.exit(require('./package.json').scripts?.['$1'] ? 0 : 1)"; }
+          if has_script lint; then
+            case "${{ steps.pm.outputs.pm }}" in
+              pnpm) pnpm run lint ;;
+              yarn) yarn lint ;;
+              npm)  npm run lint ;;
+            esac
+          else
+            echo "::notice::No hay script 'lint' en package.json — omitido"
+          fi
+
+      - name: Test (si está definido en package.json)
+        shell: bash
+        run: |
+          has_script() { node -e "process.exit(require('./package.json').scripts?.['$1'] ? 0 : 1)"; }
+          if has_script test; then
+            case "${{ steps.pm.outputs.pm }}" in
+              pnpm) pnpm run test ;;
+              yarn) yarn test ;;
+              npm)  npm test ;;
+            esac
+          else
+            echo "::notice::No hay script 'test' en package.json — omitido"
+          fi
+
+      - name: Build (si está definido en package.json)
+        shell: bash
+        run: |
+          has_script() { node -e "process.exit(require('./package.json').scripts?.['$1'] ? 0 : 1)"; }
+          if has_script build; then
+            case "${{ steps.pm.outputs.pm }}" in
+              pnpm) pnpm run build ;;
+              yarn) yarn build ;;
+              npm)  npm run build ;;
+            esac
+          else
+            echo "::notice::No hay script 'build' en package.json — omitido"
+          fi
