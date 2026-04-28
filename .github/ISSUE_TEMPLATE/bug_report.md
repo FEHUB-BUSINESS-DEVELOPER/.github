@@ -1,13 +1,17 @@
 ---
-name: Bug
+name: 🐛 Bug
 about: Reportar algo que no funciona como debería
-title: "[bug] "
+title: "BUG · <Área> — <descripción corta>"
 labels: bug
 ---
 
+<!-- Patrón de título: <ÁREA> · <Contexto> — <descripción>
+     Áreas comunes: BE | FE | DOCS | QA | OPS | INFRA
+     Si está vinculado a un Jira existente, agregalo: FEH-XXX -->
+
 ## Descripción
 
-<!-- Qué está pasando -->
+<!-- Qué está pasando, en una o dos frases claras -->
 
 ## Cómo reproducir
 
@@ -17,15 +21,24 @@ labels: bug
 
 ## Comportamiento esperado vs actual
 
-**Esperado:**
-**Actual:**
+- **Esperado:**
+- **Actual:**
 
 ## Contexto
 
 - Repo / módulo:
 - Ambiente: dev | qa | prod
 - Versión / commit:
+- Jira (si aplica): FEH-
 
-## Logs / screenshots
+## Logs / evidencia
 
-<!-- Pegá logs en bloque ``` ``` -->
+```
+<!-- pegá logs en bloque -->
+```
+
+## Definition of Done
+
+- [ ] Causa raíz identificada
+- [ ] Fix implementado y testeado
+- [ ] No introduce regresión en flujos relacionados
